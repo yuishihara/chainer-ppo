@@ -4,7 +4,7 @@ import chainer.functions as F
 
 
 class PPOValue(Chain):
-    def __init__(self, action_num):
+    def __init__(self):
         super(PPOValue, self).__init__()
         with self.init_scope():
             self.linear1 = L.Linear(in_size=None, out_size=64)
