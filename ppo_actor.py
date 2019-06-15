@@ -70,8 +70,6 @@ class PPOActor(object):
             advantage = v_target - v_current
             v_next = v_current
 
-            v_targets.append(v_target)
-            advantages.append(advantage)
-        v_targets = reversed(v_targets)
-        advantages = reversed(advantages)
+            v_targets.insert(0, v_target)
+            advantages.insert(0, advantage)
         return v_targets, advantages
