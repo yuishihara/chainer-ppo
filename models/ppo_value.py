@@ -1,5 +1,7 @@
 from chainer import Chain
 import chainer.links as L
+import chainer.functions as F
+
 
 class PPOValue(Chain):
     def __init__(self, action_num):
