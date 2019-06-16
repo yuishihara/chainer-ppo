@@ -29,18 +29,18 @@ class PPOActor(object):
 
                 action = policy(state)
                 print('action shape: ', action.shape)
-                likelihood = policy.compute_likelihood(state, action)
-                print('likelihood shape: ', likelihood.shape)
+                log_likelihood = policy.compute_log_likelihood(state, action)
+                print('likelihood shape: ', log_likelihood.shape)
 
                 action.to_cpu()
                 action = action.data
                 action = np.squeeze(action)
                 print('after action shape: ', action.shape)
 
-                likelihood.to_cpu()
-                likelihood = likelihood.data
-                likelihood = np.squeeze(likelihood)
-                print('after likelihood shape: ', likelihood.shape)
+                log_likelihood.to_cpu()
+                log_likelihood = log_likelihood.data
+                log_likelihood = np.squeeze(log_likelihood)
+                print('after log likelihood shape: ', log_likelihood.shape)
 
                 s_next, reward, end, _ = self._env.step(action)
 
@@ -49,7 +49,7 @@ class PPOActor(object):
                 else:
                     self._state = s_next
 
-                data = (s_current, action, reward, s_next, likelihood)
+                data = (s_current, action, reward, s_next, log_likelihood)
                 dataset.append(data)
         v_target, advantage = self._compute_v_target_and_advantage(
             dataset, value_function)
