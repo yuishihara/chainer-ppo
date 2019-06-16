@@ -43,12 +43,15 @@ class PPOActor(object):
                 print('after log likelihood shape: ', log_likelihood.shape)
 
                 s_next, reward, end, _ = self._env.step(action)
+                reward = np.float32(reward)
 
                 if end:
                     self._state = self._env.reset()
                 else:
                     self._state = s_next
 
+                print('dtypes: s_current: {}, action: {}, reward: {}, s_next: {}, ll: {}'.format(
+                    s_current.dtype, action.dtype, reward.dtype, s_next.dtype, log_likelihood.dtype))
                 data = (s_current, action, reward, s_next, log_likelihood)
                 dataset.append(data)
         v_target, advantage = self._compute_v_target_and_advantage(
@@ -82,8 +85,8 @@ class PPOActor(object):
                 v_next.to_cpu()
                 v_next = np.squeeze(v_next.data)
 
-            v_target = r + self._gamma * v_next + self._gamma * self._lambda * advantage
-            advantage = v_target - v_current
+            v_target = np.float32(r + self._gamma * v_next + self._gamma * self._lambda * advantage)
+            advantage = np.float32(v_target - v_current)
             v_next = v_current
 
             v_targets.insert(0, v_target)

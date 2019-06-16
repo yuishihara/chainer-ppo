@@ -12,7 +12,9 @@ from models.ppo_value import PPOValue
 
 from chainer import optimizers
 from chainer import iterators
+from chainer.dataset import concat_examples
 from chainer.datasets import tuple_dataset
+import chainer.functions as F
 
 from researchutils.arrays import unzip
 import researchutils.chainer.serializers as serializers
@@ -59,7 +61,42 @@ def sample_data(actors, policy, value_function):
         advantages.extend(advantage)
 
     s_current, a, s_next, r, likelihood = unzip(datasets)
-    return s_current, a, s_next, r, likelihood, v_targets, advantages
+    data = (s_current, a, s_next, r, likelihood, v_targets, advantages)
+    any(len(item) == len(s_current) for item in data)
+    return data
+
+
+def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_optimizer, args):
+    p_optimizer.target.cleargrads()
+    v_optimizer.target.cleargrads()
+
+    batch = iterator.next()
+    s_current, action, _, _, log_likelihood, v_targets, advantage = concat_examples(
+        batch, device=args.gpu)
+    
+    log_pi_theta = policy.compute_log_likelihood(s_current, action)
+    log_pi_theta_old = log_likelihood
+    # division of probability is exponential of difference between log probability
+    probability_ratio = F.exp(log_pi_theta - log_pi_theta_old)
+    clipped_ratio = F.clip(
+        probability_ratio, 1 - args.epsilon, 1 + args.epsilon)
+    lower_bounds = F.minimum(
+        probability_ratio * advantage, clipped_ratio * advantage)
+    clip_loss = F.mean(lower_bounds)
+
+    value = value_function(s_current)
+    value_loss = F.mean_squared_error(value, v_targets)
+
+    entropy = log_likelihood * F.exp(log_likelihood)
+    entropy_loss = F.sum(entropy)
+
+    loss = -clip_loss + value_loss - entropy_loss
+
+    # Update parameter
+    loss.backward()
+    p_optimizer.update()
+    v_optimizer.update()
+    loss.unchain_backward()
 
 
 def run_training_loop(actors, policy, value_function, args):
@@ -69,20 +106,22 @@ def run_training_loop(actors, policy, value_function, args):
     for iteration in range(args.iterations):
         print('current iteration: ', iteration)
         data = sample_data(actors, policy, value_function)
-        iterator = prepare_iterator(args, data)
+        iterator = prepare_iterator(args, *data)
 
-        for _ in range(args.epochs):
+        for epoch in range(args.epochs):
+            print('epoch num: ', epoch)
             while not iterator.is_new_epoch:
-                batch = iterator.next()
-                print('batch size: ', len(batch))
-
+                optimize_surrogate_loss(
+                    iterator, policy, value_function, p_optimizer, v_optimizer, args)
         p_lr = p_optimizer.lr
         v_lr = v_optimizer.lr
 
         print('current learning rate p: ', p_lr, ' v: ', v_lr)
-        lr = 1.0 / args.iterations * (args.iteration - iteration) * args.learning_rate
+        lr = 1.0 / args.iterations * \
+            (args.iteration - iteration) * args.learning_rate
         p_optimizer.alpha_t = lr
         v_optimizer.alpha_t = lr
+
 
 def start_training(args):
     print('training started')
@@ -129,6 +168,7 @@ def main():
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--lmb', type=float, default=0.95)
     parser.add_argument('--actor-num', type=int, default=8)
+    parser.add_argument('--epsilon', type=float, default=0.2)
 
     # model paths
     parser.add_argument('--policy-model', type=str, default='')
