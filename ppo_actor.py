@@ -24,23 +24,23 @@ class PPOActor(object):
 
                 state = chainer.Variable(np.reshape(
                     s_current, newshape=(1, ) + s_current.shape))
-                print('state shape: ', state.shape)
+                # print('state shape: ', state.shape)
                 state.to_gpu()
 
                 action = policy(state)
-                print('action shape: ', action.shape)
+                # print('action shape: ', action.shape)
                 log_likelihood = policy.compute_log_likelihood(state, action)
-                print('likelihood shape: ', log_likelihood.shape)
+                # print('likelihood shape: ', log_likelihood.shape)
 
                 action.to_cpu()
                 action = action.data
                 action = np.squeeze(action)
-                print('after action shape: ', action.shape)
+                # print('after action shape: ', action.shape)
 
                 log_likelihood.to_cpu()
                 log_likelihood = log_likelihood.data
                 log_likelihood = np.squeeze(log_likelihood)
-                print('after log likelihood shape: ', log_likelihood.shape)
+                # print('after log likelihood shape: ', log_likelihood.shape)
 
                 s_next, reward, end, _ = self._env.step(action)
                 reward = np.float32(reward)
@@ -50,8 +50,8 @@ class PPOActor(object):
                 else:
                     self._state = s_next
 
-                print('dtypes: s_current: {}, action: {}, reward: {}, s_next: {}, ll: {}'.format(
-                    s_current.dtype, action.dtype, reward.dtype, s_next.dtype, log_likelihood.dtype))
+                # print('dtypes: s_current: {}, action: {}, reward: {}, s_next: {}, ll: {}'.format(
+                #    s_current.dtype, action.dtype, reward.dtype, s_next.dtype, log_likelihood.dtype))
                 data = (s_current, action, reward, s_next, log_likelihood)
                 dataset.append(data)
         v_target, advantage = self._compute_v_target_and_advantage(

@@ -17,5 +17,5 @@ class PPOValue(Chain):
         h = self.linear2(h)
         h = F.tanh(h)
         value = self.linear3(h)
-
+        value = F.squeeze(value)
         return value

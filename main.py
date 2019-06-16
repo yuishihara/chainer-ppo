@@ -66,31 +66,35 @@ def sample_data(actors, policy, value_function):
     return data
 
 
-def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_optimizer, args):
+def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args):
     p_optimizer.target.cleargrads()
     v_optimizer.target.cleargrads()
 
     batch = iterator.next()
-    s_current, action, _, _, log_likelihood, v_targets, advantage = concat_examples(
+    s_current, action, _, _, log_likelihood, v_target, advantage = concat_examples(
         batch, device=args.gpu)
-    
+
     log_pi_theta = policy.compute_log_likelihood(s_current, action)
     log_pi_theta_old = log_likelihood
+    # print('log_pi_theta: ', log_pi_theta, ' shape: ', log_pi_theta.shape)
+    # print('log_pi_theta_old: ', log_pi_theta_old, ' shape: ', log_pi_theta_old.shape)
     # division of probability is exponential of difference between log probability
     probability_ratio = F.exp(log_pi_theta - log_pi_theta_old)
     clipped_ratio = F.clip(
-        probability_ratio, 1 - args.epsilon, 1 + args.epsilon)
+        probability_ratio, 1 - args.epsilon * alpha, 1 + args.epsilon * alpha)
     lower_bounds = F.minimum(
         probability_ratio * advantage, clipped_ratio * advantage)
     clip_loss = F.mean(lower_bounds)
 
     value = value_function(s_current)
-    value_loss = F.mean_squared_error(value, v_targets)
+    # print('value: ', value, ' shape: ', value.shape)
+    # print('v_target: ', v_target, ' shape: ', v_target.shape)
+    value_loss = F.mean_squared_error(value, v_target)
 
     entropy = log_likelihood * F.exp(log_likelihood)
     entropy_loss = F.sum(entropy)
 
-    loss = -clip_loss + value_loss - entropy_loss
+    loss = -clip_loss + args.vf_coeff * value_loss - args.entropy_coeff * entropy_loss
 
     # Update parameter
     loss.backward()
@@ -107,20 +111,16 @@ def run_training_loop(actors, policy, value_function, args):
         print('current iteration: ', iteration)
         data = sample_data(actors, policy, value_function)
         iterator = prepare_iterator(args, *data)
-
-        for epoch in range(args.epochs):
-            print('epoch num: ', epoch)
+        alpha = 1.0 / args.iterations * (args.iterations - iteration)
+        print('alpha: ', alpha)
+        for _ in range(args.epochs):
+            # print('epoch num: ', epoch)
+            iterator.reset()
             while not iterator.is_new_epoch:
                 optimize_surrogate_loss(
-                    iterator, policy, value_function, p_optimizer, v_optimizer, args)
-        p_lr = p_optimizer.lr
-        v_lr = v_optimizer.lr
-
-        print('current learning rate p: ', p_lr, ' v: ', v_lr)
-        lr = 1.0 / args.iterations * \
-            (args.iteration - iteration) * args.learning_rate
-        p_optimizer.alpha_t = lr
-        v_optimizer.alpha_t = lr
+                    iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args)
+        p_optimizer.hyperparam.alpha *= alpha
+        v_optimizer.hyperparam.alpha *= alpha
 
 
 def start_training(args):
@@ -162,13 +162,15 @@ def main():
     # Training parameters
     parser.add_argument('--iterations', type=int, default=5*1e7)
     parser.add_argument('--timesteps', type=int, default=128)
-    parser.add_argument('--learning-rate', type=float, default=2.5*1e-4)
+    parser.add_argument('--learning-rate', type=float, default=25*1e-5)
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--lmb', type=float, default=0.95)
     parser.add_argument('--actor-num', type=int, default=8)
-    parser.add_argument('--epsilon', type=float, default=0.2)
+    parser.add_argument('--epsilon', type=float, default=0.1)
+    parser.add_argument('--vf_coeff', type=float, default=1.0)
+    parser.add_argument('--entropy_coeff', type=float, default=0.01)
 
     # model paths
     parser.add_argument('--policy-model', type=str, default='')

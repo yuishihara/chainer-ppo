@@ -19,6 +19,7 @@ class PPOPolicy(Chain):
     def compute_log_likelihood(self, s, a):
         mu, ln_var = self._mean_and_variance(s)
         log_likelihood = -F.gaussian_nll(a, mu, ln_var, reduce='no')
+        log_likelihood = F.sum(log_likelihood, axis=1)
         return log_likelihood
 
     def _mean_and_variance(self, x):
