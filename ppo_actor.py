@@ -58,6 +58,34 @@ class PPOActor(object):
             dataset, value_function)
         return dataset, v_target, advantage
 
+    def run_evaluation(self, policy, test_env, trials):
+        rewards = []
+        print('evaluation start')
+        with chainer.no_backprop_mode():
+            for trial in range(trials):
+                print('evaluation trial: ', trial)
+                s_current = test_env.reset()
+                done = False
+                reward = 0.0
+                while not done:
+                    test_env.render()
+
+                    state = chainer.Variable(np.reshape(
+                        s_current, newshape=(1, ) + s_current.shape))
+                    state.to_gpu()
+
+                    action = policy(state)
+                    action.to_cpu()
+                    action = action.data
+                    action = np.squeeze(action)
+
+                    s_current, reward, done, _ = self._env.step(action)
+                    reward = np.float32(reward)
+
+                    rewards.append(reward)
+                print('trial ', trial, ' total reward: ', reward)
+        return rewards
+
     def release(self):
         self._env.close()
 
@@ -85,7 +113,8 @@ class PPOActor(object):
                 v_next.to_cpu()
                 v_next = np.squeeze(v_next.data)
 
-            v_target = np.float32(r + self._gamma * v_next + self._gamma * self._lambda * advantage)
+            v_target = np.float32(
+                r + self._gamma * v_next + self._gamma * self._lambda * advantage)
             advantage = np.float32(v_target - v_current)
             v_next = v_current
 

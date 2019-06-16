@@ -2,6 +2,10 @@ from OpenGL import GL
 
 import argparse
 
+import numpy as np
+
+import os
+
 import roboschool
 import gym
 
@@ -17,6 +21,7 @@ from chainer.datasets import tuple_dataset
 import chainer.functions as F
 
 from researchutils.arrays import unzip
+from researchutils import files
 import researchutils.chainer.serializers as serializers
 
 
@@ -103,9 +108,14 @@ def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_opt
     loss.unchain_backward()
 
 
-def run_training_loop(actors, policy, value_function, args):
+def run_training_loop(actors, policy, value_function, test_env, outdir, args):
     p_optimizer = setup_adam_optimizer(policy, args.learning_rate)
     v_optimizer = setup_adam_optimizer(value_function, args.learning_rate)
+
+    result_file = os.path.join(outdir, 'result.txt')
+    if not files.file_exists(result_file):
+        with open(result_file, "w") as f:
+            f.write('iteration\tmean\tmedian\n')
 
     for iteration in range(args.iterations):
         print('current iteration: ', iteration)
@@ -121,13 +131,42 @@ def run_training_loop(actors, policy, value_function, args):
                     iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args)
         p_optimizer.hyperparam.alpha *= alpha
         v_optimizer.hyperparam.alpha *= alpha
+        print('optimizer step size',
+              ' p: ', p_optimizer.hyperparam.alpha,
+              ' v: ', v_optimizer.hyperparam.alpha)
+
+        if iteration % args.evaluation_interval == 0:
+            actor = actors[0]
+            rewards = actor.run_evaluation(
+                policy, test_env, args.evaluation_trial)
+
+            mean = np.mean(rewards)
+            median = np.median(rewards)
+            print('mean: {mean}, median: {median}'.format(
+                mean=mean, median=median))
+
+            print('saving model of iter: ', iteration, ' to: ')
+            policy_filename = 'policy_iter-{}'.format(iteration)
+            value_filename = 'value_iter-{}'.format(iteration)
+
+            policy.to_cpu()
+            value_function.to_cpu()
+            serializers.save_model(os.path.join(
+                outdir, policy_filename), policy)
+            serializers.save_model(os.path.join(
+                outdir, value_filename), value_function)
+            policy.to_gpu()
+            value_function.to_gpu()
+
+            with open(result_file, "a") as f:
+                f.write('{iteration}\t{mean}\t{median}\n'.format(
+                    iteration=iteration, mean=mean, median=median))
 
 
 def start_training(args):
     print('training started')
     test_env = build_env(args)
     action_num = test_env.action_space.shape[0]
-    print('action num: ', action_num)
 
     policy = prepare_policy(args, action_num)
     value_function = prepare_value_function(args)
@@ -142,7 +181,9 @@ def start_training(args):
         actor = PPOActor(env, args.timesteps, args.gamma, args.lmb, args.gpu)
         actors.append(actor)
 
-    run_training_loop(actors, policy, value_function, args)
+    outdir = files.prepare_output_dir(base_dir=args.outdir, args=args)
+
+    run_training_loop(actors, policy, value_function, test_env, outdir, args)
 
     for actor in actors:
         actor.release()
@@ -153,8 +194,15 @@ def start_training(args):
 def main():
     parser = argparse.ArgumentParser()
 
+    # data saving options
+    parser.add_argument('--outdir', type=str, default='results')
+
     # Environment parameters
-    parser.add_argument('--env', type=str, default='CartPole-v0')
+    parser.add_argument('--env', type=str, default='RoboschoolHumanoid-v1')
+
+    # Evaluation setting
+    parser.add_argument('--evaluation-interval', type=int, default=1e4)
+    parser.add_argument('--evaluation-trial', type=int, default=10)
 
     # Gpu setting
     parser.add_argument('--gpu', type=int, default=0)
@@ -162,7 +210,7 @@ def main():
     # Training parameters
     parser.add_argument('--iterations', type=int, default=5*1e7)
     parser.add_argument('--timesteps', type=int, default=128)
-    parser.add_argument('--learning-rate', type=float, default=25*1e-5)
+    parser.add_argument('--learning-rate', type=float, default=2.5*1e-4)
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--gamma', type=float, default=0.99)
