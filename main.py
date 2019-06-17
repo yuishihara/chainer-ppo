@@ -142,8 +142,8 @@ def run_training_loop(actors, policy, value_function, test_env, outdir, args):
                 while not iterator.is_new_epoch:
                     optimize_surrogate_loss(
                         iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args)
-            p_optimizer.hyperparam.alpha *= alpha
-            v_optimizer.hyperparam.alpha *= alpha
+            p_optimizer.hyperparam.alpha = args.learning_rate * alpha
+            v_optimizer.hyperparam.alpha = args.learning_rate * alpha
             print('optimizer step size',
                   ' p: ', p_optimizer.hyperparam.alpha,
                   ' v: ', v_optimizer.hyperparam.alpha)
