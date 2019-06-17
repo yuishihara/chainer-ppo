@@ -23,7 +23,8 @@ class PPOActor(object):
                 state = chainer.Variable(np.reshape(
                     s_current, newshape=(1, ) + s_current.shape))
                 # print('state shape: ', state.shape)
-                state.to_gpu()
+                if not self._device < 0:
+                    state.to_gpu()
 
                 action = policy(state)
                 # print('action shape: ', action.shape)
@@ -68,7 +69,9 @@ class PPOActor(object):
                 while not done:
                     state = chainer.Variable(np.reshape(
                         s_current, newshape=(1, ) + s_current.shape))
-                    state.to_gpu()
+
+                    if not self._device < 0:
+                        state.to_gpu()
 
                     action = policy(state)
                     action.to_cpu()
@@ -97,14 +100,17 @@ class PPOActor(object):
 
             s_current = chainer.Variable(np.reshape(
                 s_current, newshape=(1, ) + s_current.shape))
-            s_current.to_gpu()
+
+            if not self._device < 0:
+                s_current.to_gpu()
             v_current = value_function(s_current)
             v_current.to_cpu()
             v_current = np.squeeze(v_current.data)
             if v_next is None:
                 s_next = chainer.Variable(np.reshape(
                     s_next, newshape=(1, ) + s_next.shape))
-                s_next.to_gpu()
+                if not self._device < 0:
+                    s_next.to_gpu()
                 v_next = value_function(s_next)
                 v_next.to_cpu()
                 v_next = np.squeeze(v_next.data)

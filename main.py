@@ -169,8 +169,9 @@ def run_training_loop(actors, policy, value_function, test_env, outdir, args):
                     outdir, policy_filename), policy)
                 serializers.save_model(os.path.join(
                     outdir, value_filename), value_function)
-                policy.to_gpu()
-                value_function.to_gpu()
+                if not args.gpu < 0:
+                    policy.to_gpu()
+                    value_function.to_gpu()
 
                 with open(result_file, "a") as f:
                     f.write('{timestep}\t{mean}\t{median}\n'.format(
