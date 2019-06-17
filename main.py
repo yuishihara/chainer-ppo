@@ -24,6 +24,8 @@ from researchutils.arrays import unzip
 from researchutils import files
 import researchutils.chainer.serializers as serializers
 
+from concurrent.futures import ThreadPoolExecutor
+
 
 def build_env(args):
     env = gym.make(args.env)
@@ -54,13 +56,22 @@ def prepare_iterator(args, *data):
     return iterators.SerialIterator(dataset, args.batch_size * args.actor_num)
 
 
-def sample_data(actors, policy, value_function):
+def run_policy_of(actor, policy, value_function):
+    return actor.run_policy(policy, value_function)
+
+
+def sample_data(actors, policy, value_function, executor):
     datasets = []
     v_targets = []
     advantages = []
+
+    futures = []
     for actor in actors:
-        dataset, v_target, advantage = actor.run_policy(
-            policy, value_function)
+        future = executor.submit(
+            run_policy_of, actor, policy, value_function)
+        futures.append(future)
+    for future in futures:
+        dataset, v_target, advantage = future.result()
         datasets.extend(dataset)
         v_targets.extend(v_target)
         advantages.extend(advantage)
@@ -115,52 +126,55 @@ def run_training_loop(actors, policy, value_function, test_env, outdir, args):
     result_file = os.path.join(outdir, 'result.txt')
     if not files.file_exists(result_file):
         with open(result_file, "w") as f:
-            f.write('iteration\tmean\tmedian\n')
+            f.write('timestep\tmean\tmedian\n')
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        previous_evaluation = 0
+        for timestep in range(0, args.total_timesteps, args.timesteps * args.actor_num):
+            print('current timestep: ', timestep, '/', args.total_timesteps)
+            data = sample_data(actors, policy, value_function, executor)
+            iterator = prepare_iterator(args, *data)
+            alpha = 1.0 / args.total_timesteps * \
+                (args.total_timesteps - timestep)
+            print('alpha: ', alpha)
+            for _ in range(args.epochs):
+                # print('epoch num: ', epoch)
+                iterator.reset()
+                while not iterator.is_new_epoch:
+                    optimize_surrogate_loss(
+                        iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args)
+            p_optimizer.hyperparam.alpha *= alpha
+            v_optimizer.hyperparam.alpha *= alpha
+            print('optimizer step size',
+                  ' p: ', p_optimizer.hyperparam.alpha,
+                  ' v: ', v_optimizer.hyperparam.alpha)
 
-    for iteration in range(args.iterations):
-        print('current iteration: ', iteration)
-        data = sample_data(actors, policy, value_function)
-        iterator = prepare_iterator(args, *data)
-        alpha = 1.0 / args.iterations * (args.iterations - iteration)
-        print('alpha: ', alpha)
-        for _ in range(args.epochs):
-            # print('epoch num: ', epoch)
-            iterator.reset()
-            while not iterator.is_new_epoch:
-                optimize_surrogate_loss(
-                    iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args)
-        p_optimizer.hyperparam.alpha *= alpha
-        v_optimizer.hyperparam.alpha *= alpha
-        print('optimizer step size',
-              ' p: ', p_optimizer.hyperparam.alpha,
-              ' v: ', v_optimizer.hyperparam.alpha)
+            if (timestep - previous_evaluation) // args.evaluation_interval == 1:
+                previous_evaluation = timestep
+                actor = actors[0]
+                rewards = actor.run_evaluation(
+                    policy, test_env, args.evaluation_trial)
 
-        if iteration % args.evaluation_interval == 0:
-            actor = actors[0]
-            rewards = actor.run_evaluation(
-                policy, test_env, args.evaluation_trial)
+                mean = np.mean(rewards)
+                median = np.median(rewards)
+                print('mean: {mean}, median: {median}'.format(
+                    mean=mean, median=median))
 
-            mean = np.mean(rewards)
-            median = np.median(rewards)
-            print('mean: {mean}, median: {median}'.format(
-                mean=mean, median=median))
+                print('saving model of iter: ', timestep, ' to: ')
+                policy_filename = 'policy_iter-{}'.format(timestep)
+                value_filename = 'value_iter-{}'.format(timestep)
 
-            print('saving model of iter: ', iteration, ' to: ')
-            policy_filename = 'policy_iter-{}'.format(iteration)
-            value_filename = 'value_iter-{}'.format(iteration)
+                policy.to_cpu()
+                value_function.to_cpu()
+                serializers.save_model(os.path.join(
+                    outdir, policy_filename), policy)
+                serializers.save_model(os.path.join(
+                    outdir, value_filename), value_function)
+                policy.to_gpu()
+                value_function.to_gpu()
 
-            policy.to_cpu()
-            value_function.to_cpu()
-            serializers.save_model(os.path.join(
-                outdir, policy_filename), policy)
-            serializers.save_model(os.path.join(
-                outdir, value_filename), value_function)
-            policy.to_gpu()
-            value_function.to_gpu()
-
-            with open(result_file, "a") as f:
-                f.write('{iteration}\t{mean}\t{median}\n'.format(
-                    iteration=iteration, mean=mean, median=median))
+                with open(result_file, "a") as f:
+                    f.write('{timestep}\t{mean}\t{median}\n'.format(
+                        timestep=timestep, mean=mean, median=median))
 
 
 def start_training(args):
@@ -201,14 +215,14 @@ def main():
     parser.add_argument('--env', type=str, default='RoboschoolHumanoid-v1')
 
     # Evaluation setting
-    parser.add_argument('--evaluation-interval', type=int, default=1e4)
+    parser.add_argument('--evaluation-interval', type=int, default=100000)
     parser.add_argument('--evaluation-trial', type=int, default=10)
 
     # Gpu setting
     parser.add_argument('--gpu', type=int, default=0)
 
     # Training parameters
-    parser.add_argument('--iterations', type=int, default=5*1e7)
+    parser.add_argument('--total-timesteps', type=int, default=50000000)
     parser.add_argument('--timesteps', type=int, default=128)
     parser.add_argument('--learning-rate', type=float, default=2.5*1e-4)
     parser.add_argument('--epochs', type=int, default=3)
