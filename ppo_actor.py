@@ -18,8 +18,6 @@ class PPOActor(object):
         dataset = []
         with chainer.no_backprop_mode():
             for _ in range(self._timesteps):
-                if self._render:
-                    self._env.render()
                 s_current = self._state
 
                 state = chainer.Variable(np.reshape(
@@ -63,13 +61,11 @@ class PPOActor(object):
         print('evaluation start')
         with chainer.no_backprop_mode():
             for trial in range(trials):
-                print('evaluation trial: ', trial)
+                # print('evaluation trial: ', trial)
                 s_current = test_env.reset()
                 done = False
                 reward = 0.0
                 while not done:
-                    test_env.render()
-
                     state = chainer.Variable(np.reshape(
                         s_current, newshape=(1, ) + s_current.shape))
                     state.to_gpu()
@@ -79,11 +75,11 @@ class PPOActor(object):
                     action = action.data
                     action = np.squeeze(action)
 
-                    s_current, reward, done, _ = self._env.step(action)
-                    reward = np.float32(reward)
+                    s_current, reward, done, _ = test_env.step(action)
+                    reward += np.float32(reward)
 
-                    rewards.append(reward)
-                print('trial ', trial, ' total reward: ', reward)
+                rewards.append(reward)
+                # print('trial ', trial, ' total reward: ', reward)
         return rewards
 
     def release(self):
