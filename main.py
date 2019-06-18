@@ -107,7 +107,7 @@ def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_opt
     # print('v_target: ', v_target, ' shape: ', v_target.shape)
     value_loss = F.mean_squared_error(value, v_target)
 
-    entropy = log_likelihood * F.exp(log_likelihood)
+    entropy = log_pi_theta * F.exp(log_pi_theta)
     entropy_loss = F.sum(entropy)
 
     loss = -clip_loss + args.vf_coeff * value_loss - args.entropy_coeff * entropy_loss
@@ -206,8 +206,32 @@ def start_training(args):
     test_env.close()
 
 
+def start_test_run(args):
+    print('test run started')
+    test_env = build_env(args)
+    action_num = test_env.action_space.shape[0]
+
+    policy = prepare_policy(args, action_num)
+    value_function = prepare_value_function(args)
+
+    if not args.gpu < 0:
+        policy.to_gpu()
+        value_function.to_gpu()
+
+    actor = PPOActor(test_env, args.timesteps, args.gamma, args.lmb, args.gpu)
+    rewards = actor.run_evaluation(policy, test_env, 10, render=True)
+    mean = np.mean(rewards)
+    median = np.median(rewards)
+    print('test run result = mean: ', mean, ' median: ', median)
+
+    actor.release()
+    test_env.close() 
+
 def main():
     parser = argparse.ArgumentParser()
+
+    # training/test option
+    parser.add_argument('--test-run', action='store_true')
 
     # data saving options
     parser.add_argument('--outdir', type=str, default='results')
@@ -241,7 +265,10 @@ def main():
 
     args = parser.parse_args()
 
-    start_training(args)
+    if args.test_run:
+        start_test_run(args)
+    else:
+        start_training(args)
 
 
 if __name__ == "__main__":

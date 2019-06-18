@@ -57,7 +57,7 @@ class PPOActor(object):
             dataset, value_function)
         return dataset, v_target, advantage
 
-    def run_evaluation(self, policy, test_env, trials):
+    def run_evaluation(self, policy, test_env, trials, render=False):
         rewards = []
         print('evaluation start')
         with chainer.no_backprop_mode():
@@ -67,6 +67,8 @@ class PPOActor(object):
                 done = False
                 reward = 0.0
                 while not done:
+                    if render:
+                        test_env.render()
                     state = chainer.Variable(np.reshape(
                         s_current, newshape=(1, ) + s_current.shape))
 
@@ -78,8 +80,9 @@ class PPOActor(object):
                     action = action.data
                     action = np.squeeze(action)
 
-                    s_current, reward, done, _ = test_env.step(action)
-                    reward += np.float32(reward)
+                    s_current, r, done, _ = test_env.step(action)
+                    # print('reward: ', r, ' done?: ', done, ' action: ', action)
+                    reward += np.float32(r)
 
                 rewards.append(reward)
                 # print('trial ', trial, ' total reward: ', reward)
