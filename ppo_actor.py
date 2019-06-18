@@ -41,7 +41,7 @@ class PPOActor(object):
                 log_likelihood = np.squeeze(log_likelihood)
                 # print('after log likelihood shape: ', log_likelihood.shape)
 
-                s_next, reward, end, _ = self._env.step(action)
+                s_next, reward, end, done = self._env.step(action)
                 reward = np.float32(reward)
 
                 if end:
@@ -51,7 +51,8 @@ class PPOActor(object):
 
                 # print('dtypes: s_current: {}, action: {}, reward: {}, s_next: {}, ll: {}'.format(
                 #    s_current.dtype, action.dtype, reward.dtype, s_next.dtype, log_likelihood.dtype))
-                data = (s_current, action, reward, s_next, log_likelihood)
+                data = (s_current, action, reward,
+                        s_next, done, log_likelihood)
                 dataset.append(data)
         v_target, advantage = self._compute_v_target_and_advantage(
             dataset, value_function)
@@ -99,7 +100,7 @@ class PPOActor(object):
         v_current = None
         v_next = None
         for t in reversed(range(T)):
-            s_current, _, r, s_next, _ = dataset[t]
+            s_current, _, r, s_next, done, _ = dataset[t]
 
             s_current = chainer.Variable(np.reshape(
                 s_current, newshape=(1, ) + s_current.shape))
@@ -117,9 +118,12 @@ class PPOActor(object):
                 v_next = value_function(s_next)
                 v_next.to_cpu()
                 v_next = np.squeeze(v_next.data)
-
-            v_target = np.float32(
-                r + self._gamma * v_next + self._gamma * self._lambda * advantage)
+            if done:
+                v_target = np.float32(r)
+                advantage = 0
+            else:
+                v_target = np.float32(
+                    r + self._gamma * v_next + self._gamma * self._lambda * advantage)
             advantage = np.float32(v_target - v_current)
             v_next = v_current
 

@@ -76,13 +76,13 @@ def sample_data(actors, policy, value_function, executor):
         v_targets.extend(v_target)
         advantages.extend(advantage)
 
-    s_current, a, s_next, r, likelihood = unzip(datasets)
-    data = (s_current, a, s_next, r, likelihood, v_targets, advantages)
+    s_current, a, r, s_next, _, likelihood = unzip(datasets)
+    data = (s_current, a, r, s_next,  likelihood, v_targets, advantages)
     any(len(item) == len(s_current) for item in data)
     return data
 
 
-def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args):
+def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_optimizer, args):
     p_optimizer.target.cleargrads()
     v_optimizer.target.cleargrads()
 
@@ -97,7 +97,7 @@ def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_opt
     # division of probability is exponential of difference between log probability
     probability_ratio = F.exp(log_pi_theta - log_pi_theta_old)
     clipped_ratio = F.clip(
-        probability_ratio, 1 - args.epsilon * alpha, 1 + args.epsilon * alpha)
+        probability_ratio, 1 - args.epsilon, 1 + args.epsilon)
     lower_bounds = F.minimum(
         probability_ratio * advantage, clipped_ratio * advantage)
     clip_loss = F.mean(lower_bounds)
@@ -107,7 +107,7 @@ def optimize_surrogate_loss(iterator, policy, value_function, p_optimizer, v_opt
     # print('v_target: ', v_target, ' shape: ', v_target.shape)
     value_loss = F.mean_squared_error(value, v_target)
 
-    entropy = log_pi_theta * F.exp(log_pi_theta)
+    entropy = policy.compute_entropy(s_current)
     entropy_loss = F.sum(entropy)
 
     loss = -clip_loss + args.vf_coeff * value_loss - args.entropy_coeff * entropy_loss
@@ -133,17 +133,14 @@ def run_training_loop(actors, policy, value_function, test_env, outdir, args):
             print('current timestep: ', timestep, '/', args.total_timesteps)
             data = sample_data(actors, policy, value_function, executor)
             iterator = prepare_iterator(args, *data)
-            alpha = 1.0 / args.total_timesteps * \
-                (args.total_timesteps - timestep)
-            print('alpha: ', alpha)
             for _ in range(args.epochs):
                 # print('epoch num: ', epoch)
                 iterator.reset()
                 while not iterator.is_new_epoch:
                     optimize_surrogate_loss(
-                        iterator, policy, value_function, p_optimizer, v_optimizer, alpha, args)
-            p_optimizer.hyperparam.alpha = args.learning_rate * alpha
-            v_optimizer.hyperparam.alpha = args.learning_rate * alpha
+                        iterator, policy, value_function, p_optimizer, v_optimizer, args)
+            p_optimizer.hyperparam.alpha = args.learning_rate
+            v_optimizer.hyperparam.alpha = args.learning_rate
             print('optimizer step size',
                   ' p: ', p_optimizer.hyperparam.alpha,
                   ' v: ', v_optimizer.hyperparam.alpha)
@@ -225,7 +222,8 @@ def start_test_run(args):
     print('test run result = mean: ', mean, ' median: ', median)
 
     actor.release()
-    test_env.close() 
+    test_env.close()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -248,13 +246,13 @@ def main():
 
     # Training parameters
     parser.add_argument('--total-timesteps', type=int, default=50000000)
-    parser.add_argument('--timesteps', type=int, default=128)
-    parser.add_argument('--learning-rate', type=float, default=2.5*1e-4)
-    parser.add_argument('--epochs', type=int, default=3)
-    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--timesteps', type=int, default=512)
+    parser.add_argument('--learning-rate', type=float, default=3*1e-4)
+    parser.add_argument('--epochs', type=int, default=15)
+    parser.add_argument('--batch-size', type=int, default=4096)
     parser.add_argument('--gamma', type=float, default=0.99)
     parser.add_argument('--lmb', type=float, default=0.95)
-    parser.add_argument('--actor-num', type=int, default=8)
+    parser.add_argument('--actor-num', type=int, default=32)
     parser.add_argument('--epsilon', type=float, default=0.1)
     parser.add_argument('--vf_coeff', type=float, default=1.0)
     parser.add_argument('--entropy_coeff', type=float, default=0.01)
