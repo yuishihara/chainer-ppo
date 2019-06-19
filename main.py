@@ -11,7 +11,7 @@ import gym
 
 from ppo_actor import PPOActor
 
-from models.ppo_policy import PPOPolicy
+from models.ppo_mujoco_policy import PPOMujocoPolicy
 from models.ppo_value import PPOValue
 
 from chainer import optimizers
@@ -39,8 +39,11 @@ def setup_adam_optimizer(model, lr):
     return optimizer
 
 
-def prepare_policy(args, num_actions):
-    policy = PPOPolicy(num_actions)
+def prepare_policy(args, num_actions, env_type='mujoco'):
+    if env_type == 'mujoco':
+        policy = PPOMujocoPolicy(num_actions)
+    else:
+        NotImplementedError("Unknown ent_type: ", env_type)
     serializers.load_model(args.policy_model, policy)
     return policy
 
