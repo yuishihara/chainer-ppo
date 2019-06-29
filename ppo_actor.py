@@ -14,14 +14,46 @@ class PPOActor(object):
         self._render = render
         self._state = self._env.reset()
 
+    def run_evaluation(self, model, test_env, trials, render=False):
+        rewards = []
+        print('evaluation start')
+        with chainer.no_backprop_mode():
+            for trial in range(trials):
+                # print('evaluation trial: ', trial)
+                s_current = test_env.reset()
+                done = False
+                reward = 0.0
+                while not done:
+                    if render:
+                        test_env.render()
+                    state = chainer.Variable(s_current)
+
+                    if not self._device < 0:
+                        state.to_gpu()
+
+                    action = model(state)
+                    action.to_cpu()
+                    action = action.data
+                    action = np.squeeze(action)
+
+                    s_current, r, done, _ = test_env.step(action)
+                    # print('reward: ', r, ' done?: ', done, ' action: ', action)
+                    reward += np.float32(r)
+
+                rewards.append(reward)
+                # print('trial ', trial, ' total reward: ', reward)
+        return rewards
+
+    def release(self):
+        self._env.close()
+
     def run_policy(self, model):
         dataset = []
         with chainer.no_backprop_mode():
             for _ in range(self._timesteps):
                 s_current = self._state
 
-                state = chainer.Variable(np.reshape(
-                    s_current, newshape=(1, ) + s_current.shape))
+                state = chainer.Variable(s_current)
                 if not self._device < 0:
                     state.to_gpu()
 
@@ -56,40 +88,6 @@ class PPOActor(object):
         v_target, advantage = self._compute_v_target_and_advantage(
             dataset, model)
         return dataset, v_target, advantage
-
-    def run_evaluation(self, model, test_env, trials, render=False):
-        rewards = []
-        print('evaluation start')
-        with chainer.no_backprop_mode():
-            for trial in range(trials):
-                # print('evaluation trial: ', trial)
-                s_current = test_env.reset()
-                done = False
-                reward = 0.0
-                while not done:
-                    if render:
-                        test_env.render()
-                    state = chainer.Variable(np.reshape(
-                        s_current, newshape=(1, ) + s_current.shape))
-
-                    if not self._device < 0:
-                        state.to_gpu()
-
-                    action = model(state)
-                    action.to_cpu()
-                    action = action.data
-                    action = np.squeeze(action)
-
-                    s_current, r, done, _ = test_env.step(action)
-                    # print('reward: ', r, ' done?: ', done, ' action: ', action)
-                    reward += np.float32(r)
-
-                rewards.append(reward)
-                # print('trial ', trial, ' total reward: ', reward)
-        return rewards
-
-    def release(self):
-        self._env.close()
 
     def _compute_v_target_and_advantage(self, dataset, model):
         T = len(dataset)
