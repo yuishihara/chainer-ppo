@@ -5,13 +5,16 @@ import chainer.functions as F
 import numpy as np
 
 
-class PPOPolicy(Chain):
+class PPOModel(Chain):
     def __init__(self):
-        super(PPOPolicy, self).__init__()
+        super(PPOModel, self).__init__()
         pass
 
     def __call__(self, s):
         raise NotImplementedError()
+
+    def value(self, s):
+        raise NotImplementedError() 
 
     def compute_log_likelihood(self, s, a):
         raise NotImplementedError()

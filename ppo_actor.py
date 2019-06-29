@@ -14,7 +14,7 @@ class PPOActor(object):
         self._render = render
         self._state = self._env.reset()
 
-    def run_policy(self, policy, value_function):
+    def run_policy(self, model):
         dataset = []
         with chainer.no_backprop_mode():
             for _ in range(self._timesteps):
@@ -22,13 +22,12 @@ class PPOActor(object):
 
                 state = chainer.Variable(np.reshape(
                     s_current, newshape=(1, ) + s_current.shape))
-                # print('state shape: ', state.shape)
                 if not self._device < 0:
                     state.to_gpu()
 
-                action = policy(state)
+                action = model(state)
                 # print('action shape: ', action.shape)
-                log_likelihood = policy.compute_log_likelihood(state, action)
+                log_likelihood = model.compute_log_likelihood(state, action)
                 # print('likelihood shape: ', log_likelihood.shape)
 
                 action.to_cpu()
@@ -55,10 +54,10 @@ class PPOActor(object):
                         s_next, done, log_likelihood)
                 dataset.append(data)
         v_target, advantage = self._compute_v_target_and_advantage(
-            dataset, value_function)
+            dataset, model)
         return dataset, v_target, advantage
 
-    def run_evaluation(self, policy, test_env, trials, render=False):
+    def run_evaluation(self, model, test_env, trials, render=False):
         rewards = []
         print('evaluation start')
         with chainer.no_backprop_mode():
@@ -76,7 +75,7 @@ class PPOActor(object):
                     if not self._device < 0:
                         state.to_gpu()
 
-                    action = policy(state)
+                    action = model(state)
                     action.to_cpu()
                     action = action.data
                     action = np.squeeze(action)
@@ -92,7 +91,7 @@ class PPOActor(object):
     def release(self):
         self._env.close()
 
-    def _compute_v_target_and_advantage(self, dataset, value_function):
+    def _compute_v_target_and_advantage(self, dataset, model):
         T = len(dataset)
         v_targets = []
         advantages = []
@@ -107,7 +106,7 @@ class PPOActor(object):
 
             if not self._device < 0:
                 s_current.to_gpu()
-            v_current = value_function(s_current)
+            v_current = model.value(s_current)
             v_current.to_cpu()
             v_current = np.squeeze(v_current.data)
             if v_next is None:
@@ -115,7 +114,7 @@ class PPOActor(object):
                     s_next, newshape=(1, ) + s_next.shape))
                 if not self._device < 0:
                     s_next.to_gpu()
-                v_next = value_function(s_next)
+                v_next = model.value(s_next)
                 v_next.to_cpu()
                 v_next = np.squeeze(v_next.data)
             if done:
