@@ -24,11 +24,11 @@ class PPOMujocoModel(PPOModel):
         return action
 
     def value(self, s):
-        h = self.linear1(s)
+        h = self.v_linear1(s)
         h = F.tanh(h)
-        h = self.linear2(h)
+        h = self.v_linear2(h)
         h = F.tanh(h)
-        v = self.linear3(h)
+        v = self.v_linear3(h)
         v = F.squeeze(v)
         return v
 

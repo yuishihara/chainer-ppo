@@ -75,7 +75,7 @@ class PPOAtariModel(PPOModel):
 
 
 if __name__ == "__main__":
-    policy = PPOAtariPolicy(action_num=4)
+    policy = PPOAtariModel(action_num=4)
 
     pi = np.asarray([[0.1, 0.2, 0.3, 0.4], [1.0, 0.0, 0.0, 0.0]])
     action = policy._choose_action(pi=pi)
