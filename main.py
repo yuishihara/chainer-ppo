@@ -8,12 +8,15 @@ import os
 
 import roboschool
 import gym
-import gym.wrappers
 
 from ppo_actor import PPOActor
 
+import numpy as np
+
 from models.ppo_mujoco_model import PPOMujocoModel
 from models.ppo_atari_model import PPOAtariModel
+
+import atari_wrappers
 
 from chainer import optimizers
 from chainer import iterators
@@ -29,9 +32,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 def build_env(args):
-    env = gym.make(args.env)
     if args.env_type == 'atari':
-        env = gym.wrappers.atari_preprocessing.AtariPreprocessing(env, terminal_on_life_loss=True)
+        env = atari_wrappers.build_atari_env(args.env)
+    else:
+        env = gym.make(args.env)
     env.reset()
     return env
 
