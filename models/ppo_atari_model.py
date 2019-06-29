@@ -68,16 +68,17 @@ class PPOAtariModel(PPOModel):
         return one_hot(a, shape=shape)
 
     def _choose_action(self, pi):
-        xp = chainer.backend.get_array_module(pi)
-        action = [[xp.random.choice(a=self._action_num, p=p)] for p in pi]
+        xp = chainer.backend.get_array_module(pi.array)
+        action = [[xp.random.choice(a=self._action_num, p=p)] for p in pi.array]
         print('action: ', action)
-        return xp.asarray(action)
+        return chainer.Variable(xp.asarray(action))
 
 
 if __name__ == "__main__":
     policy = PPOAtariModel(action_num=4)
 
     pi = np.asarray([[0.1, 0.2, 0.3, 0.4], [1.0, 0.0, 0.0, 0.0]])
+    pi = chainer.Variable(pi)
     action = policy._choose_action(pi=pi)
     assert len(action) == len(pi)
     assert action.shape == (2, 1)
