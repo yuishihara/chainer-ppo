@@ -39,8 +39,9 @@ class PPOAtariModel(PPOModel):
         log_pi = F.log(pi)
         one_hot_action = self._to_one_hot_action(
             a, shape=(s.shape[0], self._action_num))
-        device = s.get_device()
-        one_hot_action = chainer.Variable(device.send(one_hot_action))
+        print('action: ', a, ' one hot action: ', one_hot_action)
+        one_hot_action = chainer.Variable(one_hot_action)
+        print('log_pi shape: ', log_pi.shape, ' one_hot shape', one_hot_action.shape)
         return F.sum(log_pi * one_hot_action, axis=1)
 
     def compute_entropy(self, s):
@@ -65,13 +66,18 @@ class PPOAtariModel(PPOModel):
         return pi, value
 
     def _to_one_hot_action(self, a, shape):
-        return one_hot(a, shape=shape)
+        xp = chainer.backend.get_array_module(a.array)
+        return xp.eye(self._action_num)[a.array]
 
     def _choose_action(self, pi):
-        xp = chainer.backend.get_array_module(pi.array)
-        action = [[xp.random.choice(a=self._action_num, p=p)] for p in pi.array]
-        print('action: ', action)
-        return chainer.Variable(xp.asarray(action))
+        with pi.array.device:
+            pi.to_cpu()
+
+            xp = chainer.backend.get_array_module(pi.array)
+            action = [[xp.random.choice(a=self._action_num, p=p)] for p in pi.array]
+            action =  chainer.Variable(xp.asarray(action))
+            action.to_gpu()
+            return action
 
 
 if __name__ == "__main__":

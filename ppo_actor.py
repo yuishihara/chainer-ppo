@@ -26,7 +26,8 @@ class PPOActor(object):
                 while not done:
                     if render:
                         test_env.render()
-                    state = chainer.Variable(s_current)
+                    state = chainer.Variable(np.reshape(
+                        s_current, newshape=(1, ) + s_current.shape))
 
                     if not self._device < 0:
                         state.to_gpu()
@@ -53,7 +54,8 @@ class PPOActor(object):
             for _ in range(self._timesteps):
                 s_current = self._state
 
-                state = chainer.Variable(s_current)
+                state = chainer.Variable(np.reshape(
+                    s_current, newshape=(1, ) + s_current.shape))
                 if not self._device < 0:
                     state.to_gpu()
 

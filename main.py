@@ -250,7 +250,7 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
 
     # Training parameters
-    parser.add_argument('--total-timesteps', type=int, default=10*1e6)
+    parser.add_argument('--total-timesteps', type=int, default=10000000)
     parser.add_argument('--timesteps', type=int, default=128)
     parser.add_argument('--learning-rate', type=float, default=2.5*1e-4)
     parser.add_argument('--epochs', type=int, default=3)
