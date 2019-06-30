@@ -40,10 +40,10 @@ class PPOActor(object):
                 log_likelihood = np.squeeze(log_likelihood)
                 # print('after log likelihood shape: ', log_likelihood.shape)
 
-                s_next, reward, end, done = self._env.step(action)
+                s_next, reward, done, _ = self._env.step(action)
                 reward = np.float32(reward)
 
-                if end:
+                if done:
                     self._state = self._env.reset()
                 else:
                     self._state = s_next
@@ -105,7 +105,7 @@ class PPOActor(object):
                 s_current = test_env.reset()
                 done = False
                 reward = 0.0
-                while not done:
+                while 0 < test_env.lives:
                     if render:
                         test_env.render()
                     state = chainer.Variable(np.reshape(
