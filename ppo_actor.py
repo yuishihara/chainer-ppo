@@ -104,7 +104,6 @@ class PPOActor(object):
                 s_current = test_env.reset()
                 done = False
                 reward = 0.0
-                import time
                 while True:
                     if render:
                         test_env.render()
