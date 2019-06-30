@@ -49,7 +49,7 @@ class PPOAtariModel(PPOModel):
         pi, _ = self._pi_and_value(s)
         log_pi = F.log(pi)
         entropy = pi * log_pi
-        return F.sum(entropy, axis=1)
+        return -F.sum(entropy, axis=1)
 
     def _pi_and_value(self, s):
         h = self._conv1(s)
