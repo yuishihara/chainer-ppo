@@ -22,6 +22,7 @@ from chainer import optimizers
 from chainer import iterators
 from chainer.dataset import concat_examples
 from chainer.datasets import tuple_dataset
+import chainer
 import chainer.functions as F
 
 from researchutils.arrays import unzip
@@ -109,6 +110,8 @@ def optimize_surrogate_loss(iterator, model, optimizer, alpha, args):
     clip_loss = F.mean(lower_bounds)
 
     value = model.value(s_current)
+    xp = chainer.backend.get_array_module(v_target)
+    v_target = xp.reshape(v_target, newshape=value.shape)
     # print('value: ', value, ' shape: ', value.shape)
     # print('v_target: ', v_target, ' shape: ', v_target.shape)
     value_loss = F.mean_squared_error(value, v_target)

@@ -26,9 +26,10 @@ class PPOAtariModel(PPOModel):
         self._action_num = action_num
 
     def __call__(self, s):
+        assert s.shape[0] == 1
         pi, _ = self._pi_and_value(s)
-        actions = self._choose_action(pi)
-        return actions
+        action = self._choose_action(pi)
+        return action
 
     def value(self, s):
         _, v = self._pi_and_value(s)
@@ -37,11 +38,11 @@ class PPOAtariModel(PPOModel):
     def compute_log_likelihood(self, s, a):
         pi, _ = self._pi_and_value(s)
         log_pi = F.log(pi)
+        # print('action shape: ', a.shape)
         one_hot_action = self._to_one_hot_action(a)
-        print('action: ', a, ' one hot action: ', one_hot_action)
+        # print('action: ', a, ' one hot action: ', one_hot_action)
         one_hot_action = chainer.Variable(one_hot_action)
-        print('log_pi shape: ', log_pi.shape,
-              ' one_hot shape', one_hot_action.shape)
+        # print('log_pi shape: ', log_pi.shape, ' one_hot shape', one_hot_action.shape)
         return F.sum(log_pi * one_hot_action, axis=1)
 
     def compute_entropy(self, s):
@@ -66,51 +67,60 @@ class PPOAtariModel(PPOModel):
         return pi, value
 
     def _to_one_hot_action(self, a):
-        assert a.shape[1] == 1
-        xp = chainer.backend.get_array_module(a.array)
-        actions = xp.squeeze(a.array)
-        return xp.eye(self._action_num, dtype=xp.float32)[actions]
+        if isinstance(a, chainer.Variable):
+            action = a.array
+        else:
+            action = a
+        xp = chainer.backend.get_array_module(action)
+        action = xp.squeeze(action, axis=-1)
+        return xp.eye(self._action_num, dtype=xp.float32)[action]
 
     def _choose_action(self, pi):
-        xp = chainer.backend.get_array_module(pi.array)
+        xp = chainer.backend.get_array_module(pi.data)
         if xp == np:
-            action = [[xp.random.choice(a=self._action_num, p=p)]
-                      for p in pi.array]
-            action = chainer.Variable(xp.asarray(action))
+            action = [[xp.random.choice(a=self._action_num, p=p)] for p in pi.data]
+            action = chainer.Variable(np.asarray(action))
             return action
         else:
-            with pi.array.device:
-                pi.to_cpu()
-
-                action = [[xp.random.choice(a=self._action_num, p=p)]
-                          for p in pi.array]
-                action = chainer.Variable(xp.asarray(action))
-                action.to_gpu()
-                return action
+            pi.to_cpu()
+            print('probs: ', pi.data)
+            action = [[np.random.choice(a=self._action_num, p=p)] for p in pi.data]
+            action = chainer.Variable(np.asarray(action))
+            action.to_gpu()
+            return action
 
 
 if __name__ == "__main__":
     action_num = 4
     policy = PPOAtariModel(action_num=action_num)
 
-    pi = np.asarray([[0.1, 0.2, 0.3, 0.4], [1.0, 0.0, 0.0, 0.0]])
+    pi = np.asarray([[0.1, 0.2, 0.3, 0.4]])
     pi = chainer.Variable(pi)
     action = policy._choose_action(pi=pi)
     assert len(action) == len(pi)
-    assert action.shape == (2, 1)
+    assert action.shape == (1, 1)
 
     batch_size = 16
     actions = []
     for i in range(batch_size):
-        action = batch_size % action_num
+        action = i % action_num
         actions.append([action])
-    actions = chainer.Variable(np.asarray(actions))
+    actions = np.asarray(actions)
+    print('actions: ', actions, ' actions shape: ', actions.shape)
+    actions = chainer.Variable(actions)
     one_hot = policy._to_one_hot_action(actions)
-    print('one_hot shape: ', one_hot.shape)
+    print('one_hot: ', one_hot, ' one_hot shape: ', one_hot.shape)
     assert one_hot.shape == (batch_size, action_num)
 
     for i in range(batch_size):
-        action = batch_size % action_num
+        action = i % action_num
         assert one_hot[i][action] == 1
         assert (one_hot[i][0:action] == 0).all()
         assert (one_hot[i][action+1:-1] == 0).all()
+
+    actions = [[1]]
+    actions = np.asarray(actions)
+    # Both numpy/cupy arrays or chainer.Variable should be accepted
+    one_hot = policy._to_one_hot_action(actions)
+    print('one_hot: ', one_hot, ' one_hot shape: ', one_hot.shape)
+    assert one_hot.shape == (1, action_num)
