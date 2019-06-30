@@ -83,7 +83,7 @@ class PPOAtariModel(PPOModel):
             return action
         else:
             pi.to_cpu()
-            print('probs: ', pi.data)
+            # print('probs: ', pi.data)
             action = [[np.random.choice(a=self._action_num, p=p)] for p in pi.data]
             action = chainer.Variable(np.asarray(action))
             action.to_gpu()
