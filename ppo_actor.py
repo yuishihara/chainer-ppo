@@ -101,11 +101,11 @@ class PPOActor(object):
         print('evaluation start')
         with chainer.no_backprop_mode():
             for trial in range(trials):
-                # print('evaluation trial: ', trial)
                 s_current = test_env.reset()
                 done = False
                 reward = 0.0
-                while 0 < test_env.lives:
+                import time
+                while True:
                     if render:
                         test_env.render()
                     state = chainer.Variable(np.reshape(
@@ -123,6 +123,12 @@ class PPOActor(object):
                     # print('reward: ', r, ' done?: ', done, ' action: ', action)
                     reward += np.float32(r)
 
+                    if 0 == test_env.lives:
+                        break
+                    if done:
+                        s_current = test_env.reset()
+                
+                print('evaluation trial: ', trial, ' reward: ', reward)
                 rewards.append(reward)
                 # print('trial ', trial, ' total reward: ', reward)
         return rewards

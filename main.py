@@ -212,7 +212,10 @@ def start_training(args):
 def start_test_run(args):
     print('test run started')
     test_env = build_env(args)
-    action_num = test_env.action_space.shape[0]
+    if args.env_type == 'atari':
+        action_num = test_env.action_space.n
+    else:
+        action_num = test_env.action_space.shape[0]
 
     model = prepare_model(args, action_num)
 
