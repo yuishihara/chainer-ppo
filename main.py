@@ -117,7 +117,7 @@ def optimize_surrogate_loss(iterator, model, optimizer, alpha, args):
     value_loss = F.mean_squared_error(value, v_target)
 
     entropy = model.compute_entropy(s_current)
-    entropy_loss = F.sum(entropy)
+    entropy_loss = F.mean(entropy)
 
     loss = -clip_loss + args.vf_coeff * value_loss - args.entropy_coeff * entropy_loss
 
