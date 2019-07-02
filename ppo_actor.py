@@ -87,9 +87,9 @@ class PPOActor(object):
                 v_target = np.float32(r)
                 advantage = 0
             else:
-                v_target = np.float32(
-                    r + self._gamma * v_next + self._gamma * self._lambda * advantage)
-                advantage = np.float32(v_target - v_current)
+                v_target = np.float32(r + self._gamma * v_next)
+                advantage = np.float32(
+                    v_target - v_current + self._gamma * self._lambda * advantage)
             v_next = v_current
 
             v_targets.insert(0, v_target)
@@ -126,7 +126,7 @@ class PPOActor(object):
                         break
                     if done:
                         s_current = test_env.reset()
-                
+
                 print('evaluation trial: ', trial, ' reward: ', reward)
                 rewards.append(reward)
                 # print('trial ', trial, ' total reward: ', reward)
