@@ -89,7 +89,7 @@ class PPOActor(object):
             else:
                 v_target = np.float32(
                     r + self._gamma * v_next + self._gamma * self._lambda * advantage)
-            advantage = np.float32(v_target - v_current)
+                advantage = np.float32(v_target - v_current)
             v_next = v_current
 
             v_targets.insert(0, v_target)
