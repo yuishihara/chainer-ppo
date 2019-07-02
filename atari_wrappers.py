@@ -90,7 +90,7 @@ def build_atari_env(id):
 
 
 if __name__ == "__main__":
-    id = 'BreakoutNoFrameskip-v0'
+    id = 'BreakoutNoFrameskip-v4'
     original_env = gym.make(id)
     original_env.reset()
     obs, _, _, _ = original_env.step(0)
