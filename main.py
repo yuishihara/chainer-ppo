@@ -242,7 +242,7 @@ def main():
     parser.add_argument('--outdir', type=str, default='results')
 
     # Environment parameters
-    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v0')
+    parser.add_argument('--env', type=str, default='BreakoutNoFrameskip-v4')
 
     # Policy types
     parser.add_argument('--env-type', type=str,
