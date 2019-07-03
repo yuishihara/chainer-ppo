@@ -83,17 +83,16 @@ class PPOActor(object):
                 v_next = model.value(s_next)
                 v_next.to_cpu()
                 v_next = np.squeeze(v_next.data)
-            if done:
-                v_target = np.float32(r)
-                advantage = 0
-            else:
-                v_target = np.float32(r + self._gamma * v_next)
-                advantage = np.float32(
-                    v_target - v_current + self._gamma * self._lambda * advantage)
-            v_next = v_current
+            non_terminal = 0 if done else 1
+            delta = r + self._gamma * non_terminal * v_next - v_current
+            advantage = np.float32(delta + self._gamma * self._lambda * non_terminal * advantage)
+            # A = Q - V, V = E[Q] -> v_target = A + V
+            v_target = advantage + v_current
 
             v_targets.insert(0, v_target)
             advantages.insert(0, advantage)
+            
+            v_next = v_current
         return v_targets, advantages
 
     def run_evaluation(self, model, test_env, trials, render=False):
