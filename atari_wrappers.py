@@ -15,6 +15,14 @@ class NormalizedEnv(gym.ObservationWrapper):
         return normalized
 
 
+class ClippedRewardEnv(gym.RewardWrapper):
+    def __init__(self, env):
+        super(ClippedRewardEnv, self).__init__(env)
+
+    def reward(self, reward):
+        return np.sign(reward)
+
+
 class StackedStatesEnv(gym.Wrapper):
     def __init__(self, env, size=4):
         super(StackedStatesEnv, self).__init__(env)
@@ -41,6 +49,8 @@ class StackedStatesEnv(gym.Wrapper):
 
 # Copied from chainerrl implementation
 # See: https://github.com/chainer/chainerrl/blob/master/chainerrl/wrappers/atari_wrappers.py
+
+
 class EpisodicLifeEnv(gym.Wrapper):
     def __init__(self, env):
         """Make end-of-life == end-of-episode, but only reset on true game end.
@@ -79,13 +89,15 @@ class EpisodicLifeEnv(gym.Wrapper):
         return obs
 
 
-def build_atari_env(id):
+def build_atari_env(id, clip_reward=True):
     env = gym.make(id)
     env = gym.wrappers.atari_preprocessing.AtariPreprocessing(
         env, terminal_on_life_loss=False)
     env = EpisodicLifeEnv(env)
     env = NormalizedEnv(env)
     env = StackedStatesEnv(env)
+    if clip_reward:
+        env = ClippedRewardEnv(env)
     return env
 
 

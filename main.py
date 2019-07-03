@@ -41,6 +41,15 @@ def build_env(args):
     return env
 
 
+def build_test_env(args):
+    if args.env_type == 'atari':
+        env = atari_wrappers.build_atari_env(args.env, clip_reward=False)
+    else:
+        env = gym.make(args.env)
+    env.reset()
+    return env
+
+
 def setup_adam_optimizer(model, lr):
     optimizer = optimizers.Adam(alpha=lr)
     optimizer.setup(model)
@@ -181,7 +190,7 @@ def run_training_loop(actors, model, test_env, outdir, args):
 
 def start_training(args):
     print('training started')
-    test_env = build_env(args)
+    test_env = build_test_env(args)
     print('action space: ', test_env.action_space)
     if args.env_type == 'atari':
         action_num = test_env.action_space.n
