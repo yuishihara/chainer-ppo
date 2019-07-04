@@ -13,16 +13,30 @@ else:
 
 
 class PPOAtariModel(PPOModel):
-    def __init__(self, action_num):
+    def __init__(self, action_num, kind='large'):
         super(PPOAtariModel, self).__init__()
         with self.init_scope():
-            self._conv1 = L.Convolution2D(
-                in_channels=4, out_channels=16, ksize=8, stride=4)
-            self._conv2 = L.Convolution2D(
-                in_channels=16, out_channels=32, ksize=4, stride=2)
-            self._linear1 = L.Linear(in_size=None, out_size=256)
-            self._linear2 = L.Linear(in_size=256, out_size=action_num)
-            self._linear3 = L.Linear(in_size=256, out_size=1)
+            if kind == 'large':
+                # Nature DQN ver
+                self._conv1 = L.Convolution2D(
+                    in_channels=4, out_channels=32, ksize=8, stride=4)
+                self._conv2 = L.Convolution2D(
+                    in_channels=None, out_channels=64, ksize=4, stride=2)
+                self._conv3 = L.Convolution2D(
+                    in_channels=None, out_channels=64, ksize=3, stride=1)
+                self._linear1 = L.Linear(in_size=None, out_size=512)
+                self._linear2 = L.Linear(in_size=512, out_size=action_num)
+                self._linear3 = L.Linear(in_size=512, out_size=1)
+            else:
+                # A3C ver
+                self._conv1 = L.Convolution2D(
+                    in_channels=4, out_channels=16, ksize=8, stride=4)
+                self._conv2 = L.Convolution2D(
+                    in_channels=16, out_channels=32, ksize=4, stride=2)
+                self._linear1 = L.Linear(in_size=None, out_size=256)
+                self._linear2 = L.Linear(in_size=256, out_size=action_num)
+                self._linear3 = L.Linear(in_size=256, out_size=1)
+        self._kind = kind
         self._action_num = action_num
 
     def __call__(self, s):
@@ -56,6 +70,9 @@ class PPOAtariModel(PPOModel):
         h = F.relu(h)
         h = self._conv2(h)
         h = F.relu(h)
+        if self._kind == 'large':
+            h = self._conv3(h)
+            h = F.relu(h)
         h = self._linear1(h)
         h = F.relu(h)
 
@@ -78,13 +95,15 @@ class PPOAtariModel(PPOModel):
     def _choose_action(self, pi):
         xp = chainer.backend.get_array_module(pi.data)
         if xp == np:
-            action = [[xp.random.choice(a=self._action_num, p=p)] for p in pi.data]
+            action = [[xp.random.choice(a=self._action_num, p=p)]
+                      for p in pi.data]
             action = chainer.Variable(np.asarray(action))
             return action
         else:
             pi.to_cpu()
             # print('probs: ', pi.data)
-            action = [[np.random.choice(a=self._action_num, p=p)] for p in pi.data]
+            action = [[np.random.choice(a=self._action_num, p=p)]
+                      for p in pi.data]
             action = chainer.Variable(np.asarray(action))
             action.to_gpu()
             return action
