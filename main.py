@@ -156,7 +156,7 @@ def run_training_loop(actors, model, test_env, outdir, args):
 
     alpha = 1.0
     with ThreadPoolExecutor(max_workers=8) as executor:
-        previous_evaluation = 0
+        previous_evaluation = args.initial_timestep
         for timestep in range(args.initial_timestep, args.total_timesteps, args.timesteps * args.actor_num):
             if args.env_type == 'atari':
                 alpha = (1.0 - timestep / args.total_timesteps)
