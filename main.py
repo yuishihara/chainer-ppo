@@ -220,7 +220,7 @@ def start_training(args):
 
 def start_test_run(args):
     print('test run started')
-    test_env = build_env(args)
+    test_env = build_test_env(args)
     if args.env_type == 'atari':
         action_num = test_env.action_space.n
     else:
