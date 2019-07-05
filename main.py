@@ -50,10 +50,20 @@ def build_test_env(args):
     return env
 
 
-def setup_adam_optimizer(model, lr):
+def setup_adam_optimizer(args, model, lr):
     optimizer = optimizers.Adam(alpha=lr)
     optimizer.setup(model)
+
+    load_optimizer(args.optimizer_state, optimizer)
     return optimizer
+
+
+def save_optimizer(filepath, optimizer):
+    serializers.save_model(filepath, optimizer)
+
+
+def load_optimizer(filepath, optimizer):
+    serializers.load_model(filepath, optimizer)
 
 
 def prepare_model(args, num_actions):
@@ -137,7 +147,7 @@ def optimize_surrogate_loss(iterator, model, optimizer, alpha, args):
 
 
 def run_training_loop(actors, model, test_env, outdir, args):
-    optimizer = setup_adam_optimizer(model, args.learning_rate)
+    optimizer = setup_adam_optimizer(args, model, args.learning_rate)
 
     result_file = os.path.join(outdir, 'result.txt')
     if not files.file_exists(result_file):
@@ -180,6 +190,10 @@ def run_training_loop(actors, model, test_env, outdir, args):
                 model.to_cpu()
                 serializers.save_model(os.path.join(
                     outdir, model_filename), model)
+
+                optimizer_filename = 'optimizer_iter-{}'.format(timestep)
+                save_optimizer(os.path.join(
+                    outdir, optimizer_filename), optimizer)
                 if not args.gpu < 0:
                     model.to_gpu()
 
@@ -279,6 +293,9 @@ def main():
 
     # model paths
     parser.add_argument('--model-params', type=str, default='')
+
+    # optimizer state paths
+    parser.add_argument('--optimizer-state', type=str, default='')
 
     args = parser.parse_args()
 
