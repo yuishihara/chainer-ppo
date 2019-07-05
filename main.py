@@ -157,7 +157,7 @@ def run_training_loop(actors, model, test_env, outdir, args):
     alpha = 1.0
     with ThreadPoolExecutor(max_workers=8) as executor:
         previous_evaluation = 0
-        for timestep in range(0, args.total_timesteps, args.timesteps * args.actor_num):
+        for timestep in range(args.initial_timestep, args.total_timesteps, args.timesteps * args.actor_num):
             if args.env_type == 'atari':
                 alpha = (1.0 - timestep / args.total_timesteps)
             print('current timestep: ', timestep, '/', args.total_timesteps)
@@ -279,6 +279,7 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
 
     # Training parameters
+    parser.add_argument('--initial-timestep', type=int, default=0)
     parser.add_argument('--total-timesteps', type=int, default=10000000)
     parser.add_argument('--timesteps', type=int, default=128)
     parser.add_argument('--learning-rate', type=float, default=2.5*1e-4)
