@@ -101,6 +101,15 @@ def build_atari_env(id, clip_reward=True):
     return env
 
 
+def build_test_env(id):
+    env = gym.make(id)
+    env = gym.wrappers.atari_preprocessing.AtariPreprocessing(
+        env, terminal_on_life_loss=False)
+    env = NormalizedEnv(env)
+    env = StackedStatesEnv(env)
+    return env
+
+
 if __name__ == "__main__":
     id = 'BreakoutNoFrameskip-v4'
     original_env = gym.make(id)
@@ -131,7 +140,7 @@ if __name__ == "__main__":
     obs, _, _, _ = env.step(0)
     assert obs.shape == (4, 84, 84)
     assert np.all(0.0 <= obs) and np.all(obs <= 1.0)
-    
+
     reward = 0
     for i in range(1000):
         o, r, done, _ = env.step(i % 4)

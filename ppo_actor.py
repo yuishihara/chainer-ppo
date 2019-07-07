@@ -2,6 +2,8 @@ import chainer
 
 import numpy as np
 
+import gym
+
 
 class PPOActor(object):
     def __init__(self, env, timesteps, gamma, lmb, device=-1, render=False):
@@ -85,22 +87,27 @@ class PPOActor(object):
                 v_next = np.squeeze(v_next.data)
             non_terminal = 0 if done else 1
             delta = r + self._gamma * non_terminal * v_next - v_current
-            advantage = np.float32(delta + self._gamma * self._lambda * non_terminal * advantage)
+            advantage = np.float32(
+                delta + self._gamma * self._lambda * non_terminal * advantage)
             # A = Q - V, V = E[Q] -> v_target = A + V
             v_target = advantage + v_current
 
             v_targets.insert(0, v_target)
             advantages.insert(0, advantage)
-            
+
             v_next = v_current
         return v_targets, advantages
 
-    def run_evaluation(self, model, test_env, trials, render=False):
+    def run_evaluation(self, model, test_env, trials, render=False, save_video=False):
         rewards = []
         print('evaluation start')
+        if save_video:
+            test_env = gym.wrappers.Monitor(test_env, directory='video',
+                                            write_upon_reset=True, force=True, resume=True, mode='evaluation')
         with chainer.no_backprop_mode():
             for trial in range(trials):
                 s_current = test_env.reset()
+
                 done = False
                 reward = 0.0
                 while True:
@@ -121,10 +128,8 @@ class PPOActor(object):
                     # print('reward: ', r, ' done?: ', done, ' action: ', action)
                     reward += np.float32(r)
 
-                    if 0 == test_env.lives:
-                        break
                     if done:
-                        s_current = test_env.reset()
+                        break
 
                 print('evaluation trial: ', trial, ' reward: ', reward)
                 rewards.append(reward)

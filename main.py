@@ -43,9 +43,10 @@ def build_env(args):
 
 def build_test_env(args):
     if args.env_type == 'atari':
-        env = atari_wrappers.build_atari_env(args.env, clip_reward=False)
+        env = atari_wrappers.build_test_env(args.env)
     else:
         env = gym.make(args.env)
+
     env.reset()
     return env
 
@@ -71,7 +72,7 @@ def prepare_model(args, num_actions):
     if env_type == 'mujoco':
         model = PPOMujocoModel(num_actions)
     elif env_type == 'atari':
-        model = PPOAtariModel(num_actions)
+        model = PPOAtariModel(num_actions, args.atari_model_size)
     else:
         NotImplementedError("Unknown ent_type: ", env_type)
     serializers.load_model(args.model_params, model)
@@ -246,7 +247,7 @@ def start_test_run(args):
         model.to_gpu()
 
     actor = PPOActor(test_env, args.timesteps, args.gamma, args.lmb, args.gpu)
-    rewards = actor.run_evaluation(model, test_env, 10, render=True)
+    rewards = actor.run_evaluation(model, test_env, 10, render=True, save_video=args.save_video)
     mean = np.mean(rewards)
     median = np.median(rewards)
     print('test run result = mean: ', mean, ' median: ', median)
@@ -260,6 +261,7 @@ def main():
 
     # training/test option
     parser.add_argument('--test-run', action='store_true')
+    parser.add_argument('--save-video', action='store_true')
 
     # data saving options
     parser.add_argument('--outdir', type=str, default='results')
@@ -294,6 +296,8 @@ def main():
 
     # model paths
     parser.add_argument('--model-params', type=str, default='')
+    parser.add_argument('--atari-model-size', type=str,
+                        choices=['small', 'large'], default='large')
 
     # optimizer state paths
     parser.add_argument('--optimizer-state', type=str, default='')
