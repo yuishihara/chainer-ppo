@@ -28,12 +28,12 @@ python3 main.py --help
 #### Small model (2 conv layers model)
 
 ```sh
-`$ python3 main.py --env-type='atari' --test-run --model-params=trained_results/small/final_model --atari-model-size='small'
+$ python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/breakout/small/final_model --atari-model-size='small'
 ```
 
 |result|score|
 |:---:|:---:|
-| ![breakout_small_result](./trained_results/small/breakout_small_result.gif) |![breakout_small_graph](./trained_results/small/result.png)|
+| ![breakout_small_result](./trained_results/atari/breakout/small/breakout_small_result.gif) |![breakout_small_graph](./trained_results/atari/breakout/small/result.png)|
 
 
 #### Large model (3 conv layers model)
@@ -41,8 +41,12 @@ python3 main.py --help
 You can check the performance with below command
 
 ```sh
-python3 main.py --env-type='atari' --test-run --model-params=trained_results/large/final_model --atari-model-size='large'
+python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/breakout/large/final_model --atari-model-size='large'
 ```
+
+|result|score|
+|:---:|:---:|
+| ![breakout_large_result](./trained_results/atari/breakout/large/breakout_large_result.gif) |![breakout_large_graph](./trained_results/atari/breakout/large/result.png)|
 
 ## Mujoco
 Sorry in progress...
