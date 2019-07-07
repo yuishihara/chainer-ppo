@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--filename', type=str, default='result.png')
 
-    parser.add_argument('--xplim', type=int, default=100)
+    parser.add_argument('--xplim', type=int, default=10)
     parser.add_argument('--yplim', type=int, default=500)
     parser.add_argument('--xnlim', type=int, default=0)
     parser.add_argument('--ynlim', type=int, default=0)
@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     avg_y = results[:, 1]
     med_y = results[:, 2]
-    x = range(len(med_y))
+    x = np.asarray(range(len(med_y))) * 0.1
 
     plt.figure(figsize=(5, 4), dpi=80)
 
