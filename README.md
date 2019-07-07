@@ -27,9 +27,14 @@ python3 main.py --help
 ### Breakout
 #### Small model (2 conv layers model)
 
-|result|command|
+```sh
+`$ python3 main.py --env-type='atari' --test-run --model-params=trained_results/small/final_model --atari-model-size='small'
+```
+
+|result|score|
 |:---:|:---:|
-| ![breakout_small_result](./trained_results/small/breakout_small_result.gif) | `$ python3 main.py --env-type='atari' --test-run --model-params=trained_results/small/final_model --atari-model-size='small'`|
+| ![breakout_small_result](./trained_results/small/breakout_small_result.gif) |![breakout_small_graph](./trained_results/small/result.png)|
+
 
 #### Large model (3 conv layers model)
 
