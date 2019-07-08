@@ -38,8 +38,6 @@ $ python3 main.py --env-type='atari' --test-run --model-params=trained_results/a
 
 #### Large model (3 conv layers model)
 
-You can check the performance with below command
-
 ```sh
 python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/breakout/large/final_model --atari-model-size='large'
 ```
@@ -47,6 +45,17 @@ python3 main.py --env-type='atari' --test-run --model-params=trained_results/ata
 |result|score|
 |:---:|:---:|
 | ![breakout_large_result](./trained_results/atari/breakout/large/breakout_large_result.gif) |![breakout_large_graph](./trained_results/atari/breakout/large/result.png)|
+
+### Zaxxon
+
+```sh
+python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/zaxxon/large/final_model --atari-model-size='large' --env='ZaxxonNoFrameskip-v4'
+```
+
+|result|score|
+|:---:|:---:|
+| ![zaxxon_large_result](./trained_results/atari/zaxxon/large/zaxxon_large_result.gif) |![zaxxon_large_graph](./trained_results/atari/zaxxon/large/result.png)|
+
 
 ## Mujoco
 Sorry in progress...
