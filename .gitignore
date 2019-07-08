@@ -110,3 +110,5 @@ results/**
 .vscode/**
 
 video/**
+
+*.DS_Store
