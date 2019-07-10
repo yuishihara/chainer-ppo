@@ -60,6 +60,8 @@ python3 main.py --env-type='atari' --test-run --model-params=trained_results/ata
 
 ### Space Invaders
 
+#### Large model (3 conv layers model)
+
 ```sh
 python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/space_invaders/large/final_model --atari-model-size='large' --env='SpaceInvadersNoFrameskip-v4'
 ```
