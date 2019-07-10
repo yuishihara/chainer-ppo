@@ -48,6 +48,8 @@ python3 main.py --env-type='atari' --test-run --model-params=trained_results/ata
 
 ### Zaxxon
 
+#### Large model (3 conv layers model)
+
 ```sh
 python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/zaxxon/large/final_model --atari-model-size='large' --env='ZaxxonNoFrameskip-v4'
 ```
