@@ -56,6 +56,16 @@ python3 main.py --env-type='atari' --test-run --model-params=trained_results/ata
 |:---:|:---:|
 | ![zaxxon_large_result](./trained_results/atari/zaxxon/large/zaxxon_large_result.gif) |![zaxxon_large_graph](./trained_results/atari/zaxxon/large/result.png)|
 
+### Space Invaders
+
+```sh
+python3 main.py --env-type='atari' --test-run --model-params=trained_results/atari/space_invaders/large/final_model --atari-model-size='large' --env='SpaceInvadersNoFrameskip-v4'
+```
+
+|result|score|
+|:---:|:---:|
+| ![space_invaders_large_result](./trained_results/atari/space_invaders/large/space_invaders_large_result.gif) |![space_invaders_large_graph](./trained_results/atari/space_invaders/large/result.png)|
+
 
 ## Mujoco
 Sorry in progress...
